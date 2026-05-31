@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Student Gallery System</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f6f8fc;margin:0;padding:20px}
+h1{color:#ff7a8a}
+.card{background:#fff;padding:16px;border-radius:18px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:15px}
+input{width:100%;padding:10px;margin:5px 0;border:1px solid #ddd;border-radius:10px;box-sizing:border-box}
+button{padding:10px 15px;border:none;border-radius:10px;background:#ff7a8a;color:white;cursor:pointer}
+.avatar{height:180px;background:#eef2f7;border-radius:12px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.small{color:#666;font-size:14px}
+</style>
+</head>
+<body>
+
+<h1>🎓 Student Gallery System</h1>
+
+<div class="card">
+<h3>เพิ่มข้อมูลนักศึกษา</h3>
+
+<input id="fname" placeholder="ชื่อจริง *">
+<input id="lname" placeholder="นามสกุล *">
+<input id="nick" placeholder="ชื่อเล่น *">
+<input id="sid" placeholder="รหัสนักศึกษา *">
+
+<h4>ช่องทางติดต่อ (ไม่บังคับ)</h4>
+<input id="phone" placeholder="เบอร์โทร">
+<input id="facebook" placeholder="Facebook">
+<input id="instagram" placeholder="Instagram">
+<input id="lineid" placeholder="LINE ID">
+
+<h4>รูปโปรไฟล์ (ไม่บังคับ)</h4>
+<input id="avatar" type="file" accept="image/*">
+
+<button onclick="addStudent()">บันทึกข้อมูล</button>
+</div>
+
+<div class="card">
+<input id="search" placeholder="ค้นหาชื่อ / ชื่อเล่น / รหัสนักศึกษา" oninput="render()">
+</div>
+
+<div id="students" class="grid"></div>
+
+<script>
+let students = JSON.parse(localStorage.getItem("students") || "[]");
+
+function save(){
+ localStorage.setItem("students",JSON.stringify(students));
+}
+
+function addStudent(){
+
+ if(!fname.value || !lname.value || !nick.value || !sid.value){
+   alert("กรุณากรอก ชื่อจริง นามสกุล ชื่อเล่น และรหัสนักศึกษา");
+   return;
+ }
+
+ const file = avatar.files[0];
+
+ function finish(avatarData=""){
+   students.push({
+     id:Date.now(),
+     fname:fname.value,
+     lname:lname.value,
+     nick:nick.value,
+     sid:sid.value,
+     phone:phone.value,
+     facebook:facebook.value,
+     instagram:instagram.value,
+     lineid:lineid.value,
+     avatar:avatarData,
+     photos:[]
+   });
+
+   save();
+   render();
+
+   document.querySelectorAll("input").forEach(i=>{
+      if(i.type!="file") i.value="";
+   });
+   avatar.value="";
+ }
+
+ if(file){
+   const reader=new FileReader();
+   reader.onload=e=>finish(e.target.result);
+   reader.readAsDataURL(file);
+ }else{
+   finish();
+ }
+}
+
+function render(){
+
+ const q=(search.value||"").toLowerCase();
+
+ studentsDiv=document.getElementById("students");
+ studentsDiv.innerHTML="";
+
+ students.filter(s=>
+  (s.fname+s.lname+s.nick+s.sid).toLowerCase().includes(q)
+ ).forEach(s=>{
+
+  const card=document.createElement("div");
+  card.className="card";
+
+  card.innerHTML=`
+  <div class="avatar">
+   ${s.avatar ? `<img src="${s.avatar}">` : `👤 ไม่มีรูป`}
+  </div>
+
+  <h3>${s.fname} ${s.lname}</h3>
+  <div class="small">ชื่อเล่น: ${s.nick}</div>
+  <div class="small">รหัส: ${s.sid}</div>
+
+  ${s.phone ? `<div class="small">📞 ${s.phone}</div>` : ""}
+  ${s.facebook ? `<div class="small">📘 ${s.facebook}</div>` : ""}
+  ${s.instagram ? `<div class="small">📷 ${s.instagram}</div>` : ""}
+  ${s.lineid ? `<div class="small">💬 ${s.lineid}</div>` : ""}
+
+  <p>📁 อัลบั้ม ${s.photos.length} รูป</p>
+
+  <input type="file" multiple accept="image/*"
+   onchange="uploadPhotos(${s.id},this)">
+
+  <button onclick="openAlbum(${s.id})">เปิดอัลบั้ม</button>
+  `;
+
+  studentsDiv.appendChild(card);
+ });
+}
+
+function uploadPhotos(id,input){
+
+ const student=students.find(x=>x.id===id);
+
+ [...input.files].forEach(file=>{
+
+  const reader=new FileReader();
+
+  reader.onload=e=>{
+    student.photos.push(e.target.result);
+    save();
+    render();
+  };
+
+  reader.readAsDataURL(file);
+ });
+}
+
+function openAlbum(id){
+
+ const s=students.find(x=>x.id===id);
+
+ const imgs=s.photos.map(p=>
+   `<img src="${p}" style="width:220px;border-radius:12px;margin:10px;">`
+ ).join("");
+
+ const w=window.open("");
+
+ w.document.write(`
+ <html>
+ <head><title>${s.fname}</title></head>
+ <body style="font-family:Arial;padding:20px;">
+ <h1>${s.fname} ${s.lname}</h1>
+ <h3>ชื่อเล่น: ${s.nick}</h3>
+ <p>รหัสนักศึกษา: ${s.sid}</p>
+ ${imgs || "<p>ยังไม่มีรูปในอัลบั้ม</p>"}
+ </body>
+ </html>
+ `);
+}
+
+render();
+</script>
+
+</body>
+</html>
